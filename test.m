@@ -2,6 +2,7 @@
 % GENERACION DEL MODELO EN FUNCIÓN DE LAS INSTRUCCIONES DEL USUARIO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear
+
 model=generamodelo_DNI(10,100,0);
 fmodel=3;
 
@@ -17,9 +18,10 @@ npar=numberofnodes; % # of optimization variables
 Nt=npar; % # of columns in population matrix
 maxit=2000; % max number of iterations
 popsize=20; % set population size / miembros de la población
-mutrate=.05; % set mutation rate
+mutrate=0.05; % set mutation rate
 selection=0.5; % fraction of population kept / fracción de miembros sobreviven 
 
+mutnum=floor(mutrate*popsize)*2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INICIALIZA LA POBLACIÓN Y VECTOR DE COSTES%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -42,7 +44,6 @@ meanc(1)=mean(cost); % meanc contains mean of population
 % end
 [cost,ind]=sort(cost); % Ordenamos vector costes
 pop=individuo(ind,:); % Población ordenada de mejor a peor
-    
 N=ceil(popsize/2); % Calculo la mitad de la población
 pop=pop(1:N,:); % Eliminamos la mitad peor
 %sort(dist);
@@ -53,13 +54,15 @@ pop=pop(1:N,:); % Eliminamos la mitad peor
 % para reproducirse entonces el vector de probabilidades sería.
 % Prob=[5 4 4 3 3 3 2 2 2 2 1 1 1 1 1];
 Prob=repelem(N:-1:1, 1:N); % Genero vector probabilidades
-%%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PONEMOS EL MUNDO VIRTUAL A FUNCIONAR (MAIN LOOP) %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     iga=0;
 while iga<maxit
-    iga=iga+1; % increments generation counter    
+    iga=iga+1; % increments generation counter  
+    pop=pop(1:N,:); % Eliminamos la mitad peor
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % ELIJO A LOS PADRES Y MADRES %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -71,46 +74,104 @@ while iga<maxit
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Emparejamientos y generación de los hijos %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   
         [hijo1, hijo2]=HacerHijos(padre{i},madre{i});
-        pop=[pop ;hijo1; hijo2]; % No pillamos hijos como padres, no actualizamos Prob
-    end
-  
+        
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Mutate the population
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%INTRODUCE EL TU CÓDIGO
-    
+        hijo1=Mutar(mutnum,hijo1);
+        hijo2=Mutar(mutnum,hijo2);
+        pop=[pop ;hijo1; hijo2]; % No pillamos hijos como padres, no actualizamos Prob
+    end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Evalua el coste de la nueva población
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    cost=tspfun(pop,model);
     % Sort the costs and associated parameters
     [cost,ind]=sort(cost);
     pop=pop(ind,:);
-    
+
     %_______________________________________________________
     % Do statistics
     minc(iga)=min(cost);
     meanc(iga)=mean(cost);
+    
+    if mod(iga,100)==0 % Plot cada 100 interacciones
+        PlotViajero(model,100,pop(1,:));
+        pause(1/1e9) 
+    end
+    
         
     disp(iga)
 end %iga
+    PlotViajero(model,100,pop(1,:));
+    pause(1/1e9)
 
-        function [cost]=tspfun(pop,model) 
-            [popsize,npar]=size(pop);
-            cost=zeros(1,popsize);
-            for i=1:1:popsize
-                for j=1:1:npar
-                    if j==npar
-                        cost(i)=cost(i)+model.D(pop(i,j),pop(i,1));
-                    else
-                        cost(i)=cost(i)+model.D(pop(i,j),pop(i,j+1));
-                    end
+    function [mutante]=Mutar(mutnum,vanilla)
+        r=zeros(mutnum,1);
+        x=zeros(mutnum,1);
+        mutante=vanilla;
+        for i=1:1:mutnum
+            r_prov=ceil(rand*length(vanilla));
+            while ismember(r_prov,r)
+                r_prov=ceil(rand*length(vanilla));
+            end
+            r(i)=r_prov;
+            x(i)=vanilla(r(i));   
+        end
+        for i=1:1:mutnum
+            if i==1
+                mutante(r(i))=x(mutnum); 
+            else
+                mutante(r(i))=x(i-1);
+            end
+        end
+    end % end -> function Mutar
+
+    function [cost]=tspfun(pop,model) 
+        [popsize,npar]=size(pop);
+        cost=zeros(1,popsize);
+        for i=1:1:popsize
+            for j=1:1:npar
+                if j==npar
+                    cost(i)=cost(i)+model.D(pop(i,j),pop(i,1));
+                else
+                    cost(i)=cost(i)+model.D(pop(i,j),pop(i,j+1));
                 end
             end
         end
+    end % end -> function tspfun
 
+    function PlotViajero(model,tam,tabu)
+        clf 
+        rec=tabu;
+        hold on
+        for i=1:1:(length(tabu))
+            if i==length(tabu)
+            b_x=model.x(rec(1));
+            b_y=model.y(rec(1));
+            else
+            b_x=model.x(rec(i+1));
+            b_y=model.y(rec(i+1));
+            end
+            a_x=model.x(rec(i));
+            a_y=model.y(rec(i));
+            plot([a_x b_x],[a_y b_y],'b','LineWidth',1)
+        end
+        set(gca,'FontSize',12) %# Fix font size of the text in the current axes 
+        set(gca,'FontWeight','bold')  %# Fix Bold text in the current axes 
+        plot(model.x,model.y,'o') 
+        for i=1:length(model.dt.Points) %# Plot the number of each node
+            text(model.dt.Points(i,1),model.dt.Points(i,2),num2str(i),'FontWeight','bold')
+        end
+        axis([0 tam 0 tam]) %# Fix axes representation size
+        box on %# Plot all lines in the box of the figure
+        xlabel('X coordenate (m)') %# Label in the x axes
+        ylabel('Y coordenate (m)') %# Label in the y axes
+        title('Traveler') %# Title
+        hold off    
+    end % end -> function PlotViajero
+    
         function [hijo1,hijo2]=HacerHijos(padre,madre)
         hijos={0 0};
         r=ceil(rand*length(padre));
