@@ -27,29 +27,24 @@ selection=0.5; % fraction of population kept / fracción de miembros sobreviven
 individuo=zeros(popsize,npar);
 for i=1:1:popsize
     individuo(i,:)=randperm(npar);
-end 
-cost=zeros(1,popsize);
-for i=1:1:popsize
-    for j=1:1:npar
-        if j==npar
-            cost(i)=cost(i)+model.D(individuo(i,j),individuo(i,1));
-        else
-            cost(i)=cost(i)+model.D(individuo(i,j),individuo(i,j+1));
-        end
-    end
 end
+cost=tspfun(individuo,model);
+
 minc(1)=min(cost); % minc contains min of population
 meanc(1)=mean(cost); % meanc contains mean of population
-ordenada=zeros(popsize,npar);
-dist=cost;
-for i=1:1:popsize
-    [val,pose]=min(cost);
-    ordenada(i,:)=individuo(pose,:);
-    %individuo(pose,:)=inf;
-    cost(pose)=inf;   
-end
-N=ceil(popsize/2);
-pob=ordenada(1:N,:);
+% pop=zeros(popsize,npar); % pop es la matriz de población ordenada
+% dist=cost;
+% for i=1:1:popsize
+%     [val,pose]=min(cost);
+%     pop(i,:)=individuo(pose,:);
+%     %individuo(pose,:)=inf;
+%     cost(pose)=inf;   
+% end
+[cost,ind]=sort(cost); % Ordenamos vector costes
+pop=individuo(ind,:); % Población ordenada de mejor a peor
+    
+N=ceil(popsize/2); % Calculo la mitad de la población
+pop=pop(1:N,:); % Eliminamos la mitad peor
 %sort(dist);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % GENERO EL VECTOR DE PROBABILIDADES %
@@ -57,8 +52,8 @@ pob=ordenada(1:N,:);
 % e.g. si tengo una población de 10 individuos y solo la mitad sobreviven
 % para reproducirse entonces el vector de probabilidades sería.
 % Prob=[5 4 4 3 3 3 2 2 2 2 1 1 1 1 1];
-  Prob=repelem(N:-1:1, 1:N);
-
+Prob=repelem(N:-1:1, 1:N); % Genero vector probabilidades
+%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PONEMOS EL MUNDO VIRTUAL A FUNCIONAR (MAIN LOOP) %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -70,25 +65,17 @@ while iga<maxit
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % De entre el vector de probabilidades elijo aleatoriamente
     % a los padres y a las madres.
-    for i=1:1:N/2
-    padre{i}=pob(Prob(ceil(rand*length(Prob))),:);  
-    madre{i}=pob(Prob(ceil(rand*length(Prob))),:);       
+    for i=1:1:ceil(N/2)
+        padre{i}=pop(Prob(ceil(rand*length(Prob))),:);  
+        madre{i}=pop(Prob(ceil(rand*length(Prob))),:);       
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Emparejamientos y generación de los hijos %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    
-    hijo1=HacerHijo(padre{i},madre{i});
-    hijo2=HacerHijo(padre{i},madre{i});
-    pob=[pob ;hijo1; hijo2]; % No pillamos hijos como padres, no actualizamos Prob
+        [hijo1, hijo2]=HacerHijos(padre{i},madre{i});
+        pop=[pop ;hijo1; hijo2]; % No pillamos hijos como padres, no actualizamos Prob
     end
-%     r=ceil(rand*length(padre{i}));
-%     pp=[padre{i} padre{i}];
-%     genesp=pp(r:floor(length(padre{i})/2)-1)
-%     genesm=madre;
-%     for i=1:1:length(genesp)
-%         genesm=genesm(genesm~=genesp(i));
-%     end  
-%     hijo=padre(r:r+length(padre{i}/2)   
+  
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Mutate the population
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -100,7 +87,7 @@ while iga<maxit
 
     % Sort the costs and associated parameters
     [cost,ind]=sort(cost);
-    pob=pob(ind,:);
+    pop=pop(ind,:);
     
     %_______________________________________________________
     % Do statistics
@@ -110,17 +97,39 @@ while iga<maxit
     disp(iga)
 end %iga
 
-        function [hijo]=HacerHijo(padre,madre)
-    pp=[padre padre];
-    r=ceil(rand*length(padre));
-    genesp=pp(r:r+floor(length(padre)/2)-1);
-    genesm=madre;
-    for i=1:1:length(genesp)
-        genesm=genesm(genesm~=genesp(i));
-    end
-    hijo=[genesp genesm genesp genesm];
-    hijo=hijo(length(padre)-r+2:length(padre)-r+1+length(padre));
-end
+        function [cost]=tspfun(pop,model) 
+            [popsize,npar]=size(pop);
+            cost=zeros(1,popsize);
+            for i=1:1:popsize
+                for j=1:1:npar
+                    if j==npar
+                        cost(i)=cost(i)+model.D(pop(i,j),pop(i,1));
+                    else
+                        cost(i)=cost(i)+model.D(pop(i,j),pop(i,j+1));
+                    end
+                end
+            end
+        end
+
+        function [hijo1,hijo2]=HacerHijos(padre,madre)
+        hijos={0 0};
+        r=ceil(rand*length(padre));
+        for h=1:1:2
+            pp=[padre padre];        
+            genesp=pp(r:r+floor(length(padre)/2)-1);
+            genesm=madre;
+            for i=1:1:length(genesp)
+                genesm=genesm(genesm~=genesp(i));
+            end
+            hijo=[genesp genesm genesp genesm];
+            hijos{h}=hijo(length(padre)-r+2:length(padre)-r+1+length(padre));
+            x=padre;
+            padre=madre;
+            madre=x;
+        end
+        hijo1=hijos{1};
+        hijo2=hijos{2};
+        end % end -> function HacerHijos
 
         function [model]=generamodelo_DNI(numberofnodes,tam,mode);
             close all % Se cierran los mapas abiertos, el menu no
