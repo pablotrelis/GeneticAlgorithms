@@ -21,7 +21,7 @@ popsize=20; % set population size / miembros de la población
 mutrate=0.05; % set mutation rate
 selection=0.5; % fraction of population kept / fracción de miembros sobreviven 
 
-mutnum=floor(mutrate*popsize)*2;
+mutnum=floor(mutrate*popsize);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INICIALIZA LA POBLACIÓN Y VECTOR DE COSTES%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -112,23 +112,22 @@ end %iga
         x=zeros(mutnum,1);
         mutante=vanilla;
         for i=1:1:mutnum
+            r(i,1)=ceil(rand*length(vanilla));
             r_prov=ceil(rand*length(vanilla));
             while ismember(r_prov,r)
                 r_prov=ceil(rand*length(vanilla));
             end
-            r(i)=r_prov;
-            x(i)=vanilla(r(i));   
-        end
-        for i=1:1:mutnum
-            if i==1
-                mutante(r(i))=x(mutnum); 
-            else
-                mutante(r(i))=x(i-1);
-            end
-        end
-    end % end -> function Mutar
-
-    function [cost]=tspfun(pop,model) 
+            r(i,2)=r_prov;
+            x(i,1)=vanilla(r(i,1));
+            x(i,2)=vanilla(r(i,2));
+            vanilla(r(i,1))= x(i,2);
+            vanilla(
+            r(i,2))= x(i,1);
+            mutante=vanilla;
+        end % end -> function Mutar
+    end
+    
+    function [cost]=tspfun(pop,model)
         [popsize,npar]=size(pop);
         cost=zeros(1,popsize);
         for i=1:1:popsize
