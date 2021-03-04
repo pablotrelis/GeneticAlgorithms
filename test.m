@@ -106,7 +106,12 @@ while iga<maxit
 end %iga
     PlotViajero(model,100,pop(1,:));
     pause(1/1e9)
-
+    figure(2)
+    plot(minc);
+    hold on
+    plot(meanc);
+    hold off
+    disp(cost(1));
     function [mutante]=Mutar(mutnum,vanilla)
         r=zeros(mutnum,1);
         x=zeros(mutnum,1);
@@ -121,8 +126,7 @@ end %iga
             x(i,1)=vanilla(r(i,1));
             x(i,2)=vanilla(r(i,2));
             vanilla(r(i,1))= x(i,2);
-            vanilla(
-            r(i,2))= x(i,1);
+            vanilla(r(i,2))= x(i,1);
             mutante=vanilla;
         end % end -> function Mutar
     end
