@@ -15,18 +15,28 @@ function tspga_DNI(fmode,model)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % GENERACION DEL MODELO EN FUNCIÓN DE LAS INSTRUCCIONES DEL USUARIO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+close all
+clear
 if nargin<1
     fmode=0;
 end
-but=0;
+but=0; % Flag de presionar  botón
 global fig
-var=GeneraMenu();
-while(but ~=1) 
+global var
+GeneraMenu(); % Generamos el menú de solicitud
+while(but ~=1) % Bucle hasta presionar el botón de generación
     pause(1);
+    if ishandle(findobj('Type','Figure','Name','Menu'))
+    else
+        return % Si se cierra el menu, finaliza la function
+    end
 end
-numberofnodes=var.numberofnodes.Value;
+% Variables seleccionadas en el meú
+numberofnodes=var.numberofnodes.Value; 
 tam=var.tam.Value;
 fmode=var.mode.Value;
+nint=var.maxit.Value;
+hab=var.popsize.Value;
 
 if fmode==3
     if nargin<2
@@ -46,9 +56,9 @@ close all
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 npar=numberofnodes; % # of optimization variables
 Nt=npar; % # of columns in population matrix
-maxit=2000; % max number of iterations
-popsize=20; % set population size / miembros de la población
-mutrate=0.05; % set mutation rate
+maxit=nint; % max number of iterations
+popsize=hab; % set population size / miembros de la población
+mutrate=0.1; % set mutation rate
 selection=0.5; % fraction of population kept / fracción de miembros sobreviven 
 
 mutnum=floor(mutrate*popsize);
@@ -74,7 +84,7 @@ meanc(1)=mean(cost); % meanc contains mean of population
 % end
 [cost,ind]=sort(cost); % Ordenamos vector costes
 pop=individuo(ind,:); % Población ordenada de mejor a peor
-N=ceil(popsize/2); % Calculo la mitad de la población
+N=ceil(popsize*selection); % Calculo la mitad de la población
 pop=pop(1:N,:); % Eliminamos la mitad peor
 %sort(dist);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -234,7 +244,7 @@ end %iga
             if nargin<2
                 tam=100; % Tamaño del mapa 100x100 m
             end
-            if nargin<1, 
+            if nargin<1
                 numberofnodes=10; % 10 nodos deffault
             end
             %%%%%---------- Generacion de nodos segun el modo ----------%%%%%
@@ -317,44 +327,52 @@ end %iga
         title('Generated model') %# Title
     end % end -> function MapaPlot
 
-    function [var]=GeneraMenu()
+    function []=GeneraMenu()
     % La función GeneraMenu crea todos los elementos del uifigure que se
     % utilizan como menú para las diferentes aplicaciones. Se generan
     % diferentes label que indican que es cada elemento. Se utilizan
     % tambien cajas de números para añadir el valor deseado a las variables
     % y botones para ejecutar las correspondientes funciones.        
     %%%%%---------- Creacion uifigure principal ----------%%%%%
-    fig = uifigure; %Se crea la ui figure principal y su posicion
-    fig.Position = [50,100,700,160];
+    fig = uifigure('Name','Menu'); %Se crea la ui figure principal y su posicion
+    fig.Position = [50,500,700,200];
     fig.HandleVisibility = 'on';
     %%%%%---------- Creacion paneles para cada app ----------%%%%%
-    p1 = uipanel('Parent',fig,'Position',[10,10,680,140]); %Panel Mapa
+    p1 = uipanel('Parent',fig,'Position',[10,10,680,180]); %Panel Mapa
     %%%%%---------- Diferentes labels del menu ----------%%%%%
     % Submenu Generacion de mapa panel 1 Labels
-    sec = uilabel('Parent',p1,'Position',[250,100, 200,30],'HorizontalAlignment','center');
+    sec = uilabel('Parent',p1,'Position',[250,120, 200,30],'HorizontalAlignment','center');
     sec.FontSize = 18;
     sec.Text = 'Generación de Mapa';
-    inf = uilabel('Parent',p1,'Position',[30,70, 100,20]);
+    inf = uilabel('Parent',p1,'Position',[30,90, 100,20]);
     inf.Text = 'Número de nodos';
-    inf = uilabel('Parent',p1,'Position',[180,70, 100,20]);
+    inf = uilabel('Parent',p1,'Position',[180,90, 100,20]);
     inf.Text = 'Tamaño tabla';
-    inf = uilabel('Parent',p1,'Position',[330,70, 100,20]);
+    inf = uilabel('Parent',p1,'Position',[330,90, 100,20]);
     inf.Text = 'Modo';
+    inf = uilabel('Parent',p1,'Position',[30,40, 100,20]);
+    inf.Text = 'Interacciones max';
+    inf = uilabel('Parent',p1,'Position',[180,40, 100,20]);
+    inf.Text = 'Tamaño población';
     %%%%%---------- Elementos solicitud de variables ----------%%%%%
     %--- Info: Las variables solicitadas se guardan en el struct var.
     % Variables generacion de mapa: numberofnodes, tam y mode
-    var.numberofnodes = uieditfield(p1,'numeric','Position',[30,50, 100,20]);
+    var.numberofnodes = uieditfield(p1,'numeric','Position',[30,70, 100,20]);
     var.numberofnodes.Value = 20;
-    var.tam = uieditfield(p1,'numeric','Position',[180,50, 100,20]);
+    var.tam = uieditfield(p1,'numeric','Position',[180,70, 100,20]);
     var.tam.Value = 100;
-    var.mode = uidropdown(p1,'Position',[330,50, 100,20]);
+    var.mode = uidropdown(p1,'Position',[330,70, 100,20]);
     var.mode.Items = {'Aleatorio','Seleccionar','Guardado','Variable Model'};
     var.mode.ItemsData = [0 1 2 3];
     var.mode.Value=fmode;
+    var.maxit = uieditfield(p1,'numeric','Position',[30,20, 100,20]);
+    var.maxit.Value = 2000;
+    var.popsize = uieditfield(p1,'numeric','Position',[180,20, 100,20]);
+    var.popsize.Value = 20;
     %%%%%---------- Botones del menu ----------%%%%%
     % Botones generacion de mapa
     btn = uibutton(p1,'push','Text','Generar mapa',...
-               'Position',[480, 50, 100, 20],...
+               'Position',[480, 70, 100, 20],...
                'ButtonPushedFcn', @(btn,event)btnPush());
            
     %%%%%---------- Funciones btnPush ----------%%%%%
