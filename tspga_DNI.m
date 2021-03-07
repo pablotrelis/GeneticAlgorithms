@@ -1,4 +1,4 @@
-function tspga_DNI(fmode,model)
+function tspga_DNI(model)
 % fucntion tspga_DNI(fmode,model)
 % Función que utiliza algoritmos genéticos para resolver el problema del
 % viajante (Travel Sales Problem TSP)
@@ -16,10 +16,7 @@ function tspga_DNI(fmode,model)
 % GENERACION DEL MODELO EN FUNCIÓN DE LAS INSTRUCCIONES DEL USUARIO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 close all
-clear
-if nargin<1
-    fmode=0;
-end
+clearvars -except model
 but=0; % Flag de presionar  botón
 global fig
 global var
@@ -37,10 +34,11 @@ tam=var.tam.Value;
 fmode=var.mode.Value;
 nint=var.maxit.Value;
 hab=var.popsize.Value;
+mut=var.mutrate.Value;
 
 if fmode==3
-    if nargin<2
-         disp('Error: El modo 3 requiere introducir el modelo')
+    if nargin<1
+         error('Error: El modo 3 requiere introducir el modelo')
     end
 end
 if fmode<3
@@ -55,13 +53,13 @@ close all
 % PARAMETROS DEL ALGORITMO GENÉTICO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 npar=numberofnodes; % # of optimization variables
-Nt=npar; % # of columns in population matrix
+%Nt=npar; % # of columns in population matrix
 maxit=nint; % max number of iterations
 popsize=hab; % set population size / miembros de la población
-mutrate=0.1; % set mutation rate
+mutrate=mut; % set mutation rate
 selection=0.5; % fraction of population kept / fracción de miembros sobreviven 
 
-mutnum=floor(mutrate*popsize);
+mutnum=floor(mutrate*popsize); % Número de mutaciones
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INICIALIZA LA POBLACIÓN Y VECTOR DE COSTES%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -343,7 +341,7 @@ end %iga
     % Submenu Generacion de mapa panel 1 Labels
     sec = uilabel('Parent',p1,'Position',[250,120, 200,30],'HorizontalAlignment','center');
     sec.FontSize = 18;
-    sec.Text = 'Generación de Mapa';
+    sec.Text = 'Problema del viajero';
     inf = uilabel('Parent',p1,'Position',[30,90, 100,20]);
     inf.Text = 'Número de nodos';
     inf = uilabel('Parent',p1,'Position',[180,90, 100,20]);
@@ -354,9 +352,12 @@ end %iga
     inf.Text = 'Interacciones max';
     inf = uilabel('Parent',p1,'Position',[180,40, 100,20]);
     inf.Text = 'Tamaño población';
+    inf = uilabel('Parent',p1,'Position',[330,40, 100,20]);
+    inf.Text = 'Rate mutación';
     %%%%%---------- Elementos solicitud de variables ----------%%%%%
     %--- Info: Las variables solicitadas se guardan en el struct var.
-    % Variables generacion de mapa: numberofnodes, tam y mode
+    % Variables generacion de mapa: numberofnodes, tam, mode, maxit y
+    % popsize
     var.numberofnodes = uieditfield(p1,'numeric','Position',[30,70, 100,20]);
     var.numberofnodes.Value = 20;
     var.tam = uieditfield(p1,'numeric','Position',[180,70, 100,20]);
@@ -364,11 +365,14 @@ end %iga
     var.mode = uidropdown(p1,'Position',[330,70, 100,20]);
     var.mode.Items = {'Aleatorio','Seleccionar','Guardado','Variable Model'};
     var.mode.ItemsData = [0 1 2 3];
-    var.mode.Value=fmode;
+    var.mode.Value=0;
     var.maxit = uieditfield(p1,'numeric','Position',[30,20, 100,20]);
     var.maxit.Value = 2000;
     var.popsize = uieditfield(p1,'numeric','Position',[180,20, 100,20]);
     var.popsize.Value = 20;
+    var.mutrate = uieditfield(p1,'numeric','Position',[330,20, 100,20]);
+    var.mutrate.Limits = [0 1];
+    var.mutrate.Value = 0.05;
     %%%%%---------- Botones del menu ----------%%%%%
     % Botones generacion de mapa
     btn = uibutton(p1,'push','Text','Generar mapa',...
@@ -378,11 +382,8 @@ end %iga
     %%%%%---------- Funciones btnPush ----------%%%%%
         function btnPush()
             but=1;
-        end
-        
-        
+        end     
     end % end -> function GeneraMenu
-
 
 
 end % end -> function tspga_DNI
