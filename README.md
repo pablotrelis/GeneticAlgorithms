@@ -14,3 +14,5 @@ v0.1.2 : Gráficas de resultados
 v0.1.3 : Menú gráfico primera versión
 
 v0.1.4 : Menú gráfico funcional con opciones de interacciones
+
+v1.0.0 : Primera versión funcional falta optimización
