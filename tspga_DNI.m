@@ -144,12 +144,15 @@ while iga<maxit
 end %iga
     PlotViajero(model,100,pop(1,:));
     pause(1/1e9)
-    figure(2)
-    plot(minc);
-    hold on
-    plot(meanc);
-    hold off
-    disp(cost(1));
+    Estadisticas();
+%     figure(2)
+%     plot(minc);
+%     hold on
+%     plot(meanc);
+%     hold off
+%     disp(cost(1));
+    
+    
     function [mutante]=Mutar(mutnum,vanilla)
         r=zeros(mutnum,1);
         x=zeros(mutnum,1);
@@ -385,5 +388,64 @@ end %iga
         end     
     end % end -> function GeneraMenu
 
+    function []=Estadisticas()
+        statsmenu = uifigure('Name','Menu'); %Se crea la ui figure principal y su posicion
+        statsmenu.Position = [50,100,700,700];
+        statsmenu.HandleVisibility = 'on';       
+        p1 = uipanel('Parent',statsmenu,'Position',[10,10,680,680]); %Panel Mapa
+        %%%%%---------- Diferentes labels del menu ----------%%%%%
+        % Submenu Generacion de mapa panel 1 Labels
+        sec = uilabel('Parent',p1,'Position',[250,120, 200,30],'HorizontalAlignment','center');
+        sec.FontSize = 18;
+        sec.Text = 'Menú de estadísticas';
+        inf = uilabel('Parent',p1,'Position',[30,90, 100,20]);
+        inf.Text = 'Número de nodos';
+        ax = uiaxes('Parent',p1,'Position',[20,200, 640,460],...
+                'XLim',[0 tam],'YLim',[0 tam]);
+        
+        %%%%%---------- Elementos solicitud de variables ----------%%%%%
+        %--- Info: Las variables solicitadas se guardan en el struct var.
+        % Variables generacion de mapa: numberofnodes, tam, mode, maxit y
+        % popsize
+
+ 
+        %%%%%---------- Botones del menu ----------%%%%%
+        % Botones generacion de mapa
+        recorrido = uibutton(p1,'state','Text','Generar mapa',...
+                   'Position',[30, 70, 100, 20],...
+                   'ValueChangedFcn', @(recorrido,event)recorridoPush());
+           
+        %%%%%---------- Funciones btnPush ----------%%%%%
+        function recorridoPush
+            if recorrido.Value==1
+                cla(ax)
+                
+                hold on
+                rec=pop(1,:);
+                for i=1:1:(length(rec))
+                    if i==length(rec)
+                    b_x=model.x(rec(1));
+                    b_y=model.y(rec(1));
+                    else
+                    b_x=model.x(rec(i+1));
+                    b_y=model.y(rec(i+1));
+                    end
+                    a_x=model.x(rec(i));
+                    a_y=model.y(rec(i));
+                    plot([a_x b_x],[a_y b_y],'b','LineWidth',1)
+                end    
+                    plot(model.x,model.y,'o')
+                
+            else
+                cla(ax)
+            end
+        end
+    
+%         stats=figure('Name','Estadisticas')
+%         plot(minc);
+%         hold on
+%         plot(meanc);
+%         hold off
+    end % end -> function estadisticas
 
 end % end -> function tspga_DNI
