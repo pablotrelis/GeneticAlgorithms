@@ -15,8 +15,8 @@ function tspga_DNI(model)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % GENERACION DEL MODELO EN FUNCIÓN DE LAS INSTRUCCIONES DEL USUARIO %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-close all
-clearvars -except model
+close all % Cerramos todas las figuras
+clearvars -except model % Se eliminan todas las variables menos model
 but=0; % Flag de presionar  botón
 global fig
 global var
@@ -29,12 +29,12 @@ while(but ~=1) % Bucle hasta presionar el botón de generación
     end
 end
 % Variables seleccionadas en el meú
-numberofnodes=var.numberofnodes.Value; 
-tam=var.tam.Value;
-fmode=var.mode.Value;
-nint=var.maxit.Value;
-hab=var.popsize.Value;
-mut=var.mutrate.Value;
+numberofnodes=var.numberofnodes.Value; % Número de nodos del mapa
+tam=var.tam.Value; % Tamaño plot del mapa
+fmode=var.mode.Value; % Modo de generación del mapa
+nint=var.maxit.Value; % Número interacciones máximas
+hab=var.popsize.Value; % Número de población
+mut=var.mutrate.Value; % Número de mutaciones por individuo
 
 if fmode==3
     if nargin<1
@@ -57,29 +57,23 @@ npar=numberofnodes; % # of optimization variables
 maxit=nint; % max number of iterations
 popsize=hab; % set population size / miembros de la población
 mutrate=mut; % set mutation rate
-selection=0.5; % fraction of population kept / fracción de miembros sobreviven 
+selection=0.75; % fraction of population kept / fracción de miembros sobreviven 
 
-mutnum=floor(mutrate*popsize); % Número de mutaciones
+%mutnum=floor(mutrate*popsize); % Número de mutaciones
+mutnum=1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INICIALIZA LA POBLACIÓN Y VECTOR DE COSTES%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %base=(1:npar);
 individuo=zeros(popsize,npar);
-for i=1:1:popsize
+for i=1:1:popsize % Generamos la población inicial random
     individuo(i,:)=randperm(npar);
 end
-cost=tspfun(individuo,model);
+cost=tspfun(individuo,model); % Calculamos los costes 
 
 minc(1)=min(cost); % minc contains min of population
 meanc(1)=mean(cost); % meanc contains mean of population
-% pop=zeros(popsize,npar); % pop es la matriz de población ordenada
-% dist=cost;
-% for i=1:1:popsize
-%     [val,pose]=min(cost);
-%     pop(i,:)=individuo(pose,:);
-%     %individuo(pose,:)=inf;
-%     cost(pose)=inf;   
-% end
+
 [cost,ind]=sort(cost); % Ordenamos vector costes
 pop=individuo(ind,:); % Población ordenada de mejor a peor
 N=ceil(popsize*selection); % Calculo la mitad de la población
@@ -96,7 +90,9 @@ Prob=repelem(N:-1:1, 1:N); % Genero vector probabilidades
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PONEMOS EL MUNDO VIRTUAL A FUNCIONAR (MAIN LOOP) %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    iga=0;
+    iga=0; % Contador bucle while
+    returncount=0; % Contador repeticiones para break
+    figrec=figure('Name','Recorrido','Position',[800,200,500,500]); %Mapa
 while iga<maxit
     iga=iga+1; % increments generation counter  
     pop=pop(1:N,:); % Eliminamos la mitad peor
@@ -112,52 +108,81 @@ while iga<maxit
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Emparejamientos y generación de los hijos %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Genero dos hijos para cada pareja
         [hijo1, hijo2]=HacerHijos(padre{i},madre{i});
         
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Mutate the population
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        hijo1=Mutar(mutnum,hijo1);
-        hijo2=Mutar(mutnum,hijo2);
+    %%%%%-----Para 5% de la población muta-----%%%%%
+        flagmutacion=0; % 1 -> muta 5%  
+        if flagmutacion==1
+            x=rand();
+            if x<=mutrate
+                hijo1=Mutar(mutnum,hijo1);
+            end
+            x=rand();
+            if x<=mutrate
+                hijo2=Mutar(mutnum,hijo2);
+            end
+    %%%%%-----Todos los hijos nacidos mutan-----%%%%%
+        else
+            hijo1=Mutar(mutnum,hijo1);
+            hijo2=Mutar(mutnum,hijo2);
+        end
+        % Añadimos los hijos a la población
         pop=[pop ;hijo1; hijo2]; % No pillamos hijos como padres, no actualizamos Prob
-    end
+    end % end de todas parejas
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Evalua el coste de la nueva población
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     cost=tspfun(pop,model);
     % Sort the costs and associated parameters
     [cost,ind]=sort(cost);
-    pop=pop(ind,:);
+    pop=pop(ind,:); %Reordenamos población con hijos
 
     %_______________________________________________________
     % Do statistics
-    minc(iga)=min(cost);
-    meanc(iga)=mean(cost);
+    minc(iga)=min(cost); % mínimo de cada interaccion para estadísticas
+    meanc(iga)=mean(cost); % media de cada interacción
     
     if mod(iga,100)==0 % Plot cada 100 interacciones
         PlotViajero(model,100,pop(1,:));
         pause(1/1e9) 
     end
     
-        
+     if iga > 2000 % A partir de 2000 iter, forzamos break con x repeticiones
+        if (minc(iga)==minc(iga-1))
+            returncount=returncount+1; %Contador para forzar break
+        else
+            returncount=0;
+        end
+        if returncount==5000 % Numero de veces seguidas con dmin para finalizar iter                  
+            break %while
+        end
+    end % end -> if finalizar interacciones       
     disp(iga)
 end %iga
+   
     PlotViajero(model,100,pop(1,:));
     pause(1/1e9)
-    figure(2)
-    plot(minc);
-    hold on
-    plot(meanc);
-    hold off
-    disp(cost(1));
+    Estadisticas(); %Menú estadísticas
+    res_cost.Value = min(cost);
+    disp(min(cost));
+    
     function [mutante]=Mutar(mutnum,vanilla)
+        %INPUTS
+            %mutnum: Número de mutaciones por usuario
+            %vanilla: Habitante antes de mutar
+        %OUTPUTS
+            %mutante: Habitante mutado
         r=zeros(mutnum,1);
         x=zeros(mutnum,1);
         mutante=vanilla;
         for i=1:1:mutnum
-            r(i,1)=ceil(rand*length(vanilla));
+            r(i,1)=ceil(rand*length(vanilla)); %Posición de la mutación
             r_prov=ceil(rand*length(vanilla));
-            while ismember(r_prov,r)
+            while ismember(r_prov,r) %Hacemos que la segunda pose != primera
                 r_prov=ceil(rand*length(vanilla));
             end
             r(i,2)=r_prov;
@@ -170,9 +195,10 @@ end %iga
     end
     
     function [cost]=tspfun(pop,model)
+        %model.D: distancia entre diferentes nodos del mapa
         [popsize,npar]=size(pop);
         cost=zeros(1,popsize);
-        for i=1:1:popsize
+        for i=1:1:popsize %Calculamos coste total de cada recorrido
             for j=1:1:npar
                 if j==npar
                     cost(i)=cost(i)+model.D(pop(i,j),pop(i,1));
@@ -187,6 +213,7 @@ end %iga
         clf 
         rec=tabu;
         hold on
+        
         for i=1:1:(length(tabu))
             if i==length(tabu)
             b_x=model.x(rec(1));
@@ -214,17 +241,22 @@ end %iga
     end % end -> function PlotViajero
     
     function [hijo1,hijo2]=HacerHijos(padre,madre)
+        %Introducimos madre y padre y genera dos hijos con el mismo rand,
+        %el primero copia los genes del padre a partir del rand, el segundo
+        %los de la madre. El resto los ordena del otro en el mismo orden
         hijos={0 0};
         r=ceil(rand*length(padre));
         for h=1:1:2
             pp=[padre padre];        
-            genesp=pp(r:r+floor(length(padre)/2)-1);
+            genesp=pp(r:r+floor(length(padre)/2)-1); %Tomamaos genes copiados padre
             genesm=madre;
             for i=1:1:length(genesp)
-                genesm=genesm(genesm~=genesp(i));
+                genesm=genesm(genesm~=genesp(i)); %Elegimos los genes restantes de la madre
             end
             hijo=[genesp genesm genesp genesm];
             hijos{h}=hijo(length(padre)-r+2:length(padre)-r+1+length(padre));
+            % Recortamos el hijo
+            % Cambiamos padre por madre para el hijo2
             x=padre;
             padre=madre;
             madre=x;
@@ -233,7 +265,7 @@ end %iga
         hijo2=hijos{2};
         end % end -> function HacerHijos
 
-    function [model]=generamodelo_DNI(numberofnodes,tam,mode);
+    function [model]=generamodelo_DNI(numberofnodes,tam,mode)
             close all % Se cierran los mapas abiertos, el menu no
             %%%%%---------- Generacion inputs default ----------%%%%%
             if nargin<3
@@ -385,5 +417,100 @@ end %iga
         end     
     end % end -> function GeneraMenu
 
+    function []=Estadisticas()
+        statsmenu = uifigure('Name','Menu'); %Se crea la ui figure principal y su posicion
+        statsmenu.Position = [50,100,700,700];
+        statsmenu.HandleVisibility = 'on';       
+        p1 = uipanel('Parent',statsmenu,'Position',[10,10,680,680]); %Panel Mapa
+        %%%%%---------- Diferentes labels del menu ----------%%%%%
+        % Submenu Generacion de mapa panel 1 Labels
+        sec = uilabel('Parent',p1,'Position',[250,120, 200,30],'HorizontalAlignment','center');
+        sec.FontSize = 18;
+        sec.Text = 'Menú de estadísticas';
+        inf = uilabel('Parent',p1,'Position',[30,90, 100,20]);
+        inf.Text = 'Mapa solución';
+        ax = uiaxes('Parent',p1,'Position',[20,200, 640,460],...
+                'XLim',[0 tam],'YLim',[0 tam]);
+        inf = uilabel('Parent',p1,'Position',[180,90, 100,20]);
+        inf.Text = 'Genera gráficas min y mean';
+        inf = uilabel('Parent',p1,'Position',[430,90, 100,20]);
+        inf.Text = 'Coste mínimo';
+        res_cost = uieditfield(p1,'numeric','Position',[430,70,150,20],...
+                'Editable','off','ValueDisplayFormat','%.4f m');
+        res_cost.Value = 0;
+
+        
+        %%%%%---------- Elementos solicitud de variables ----------%%%%%
+        %--- Info: Las variables solicitadas se guardan en el struct var.
+        % Variables generacion de mapa: numberofnodes, tam, mode, maxit y
+        % popsize
+
+ 
+        %%%%%---------- Botones del menu ----------%%%%%
+        % Botones generacion de mapa
+        recorrido = uibutton(p1,'state','Text','Generar mapa',...
+                   'Position',[30, 70, 100, 20],...
+                   'ValueChangedFcn', @(recorrido,event)recorridoPush());
+        btnmin = uibutton(p1,'state','Text','Gráficas',...
+                   'Position',[180, 70, 100, 20],...
+                   'ValueChangedFcn', @(btnmin,event)minPush());
+           
+        %%%%%---------- Funciones btnPush ----------%%%%%
+        % Boton plot del recorrido final
+        function recorridoPush
+            if recorrido.Value==1
+                cla(ax)
+                if ishandle(findobj('Type','Figure','Name','Recorrido'))
+                    close (figrec)
+                end
+                btnmin.Value=0;
+                ax.XLim=[0 tam];
+                ax.YLim=[0 tam];
+                hold on
+                rec=pop(1,:);
+                for i=1:1:(length(rec))
+                    if i==length(rec)
+                    b_x=model.x(rec(1));
+                    b_y=model.y(rec(1));
+                    else
+                    b_x=model.x(rec(i+1));
+                    b_y=model.y(rec(i+1));
+                    end
+                    a_x=model.x(rec(i));
+                    a_y=model.y(rec(i));
+                    plot([a_x b_x],[a_y b_y],'b','LineWidth',1,'Parent',ax)
+                end    
+                plot(model.x,model.y,'o','Parent',ax)
+                legend('off')
+                xlabel('')
+                ylabel('')
+                hold off 
+            else
+                cla(ax)
+            end
+        end
+        % Boton plot gráficas
+        function minPush()
+             if btnmin.Value==1
+                recorrido.Value=0;
+                cla(ax)
+                if ishandle(findobj('Type','Figure','Name','Recorrido'))
+                    close (figrec)
+                end
+                ax.XLim=[0 iga];
+                ax.YLim=[(min(minc)-50) max(meanc)];
+                plot(minc,'Parent',ax);
+                hold on
+                plot(meanc,'Parent',ax);
+                xlabel('Número de interacciones')
+                ylabel('Distancia en metros')
+                legend('Coste mínimo','Media de costes')
+                hold off
+             else
+                cla(ax) 
+             end
+        end
+        
+    end % end -> function estadisticas
 
 end % end -> function tspga_DNI
