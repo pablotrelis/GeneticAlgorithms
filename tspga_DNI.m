@@ -92,6 +92,7 @@ Prob=repelem(N:-1:1, 1:N); % Genero vector probabilidades
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     iga=0; % Contador bucle while
     returncount=0; % Contador repeticiones para break
+    figrec=figure('Name','Recorrido','Position',[800,200,500,500]); %Mapa
 while iga<maxit
     iga=iga+1; % increments generation counter  
     pop=pop(1:N,:); % Eliminamos la mitad peor
@@ -114,7 +115,7 @@ while iga<maxit
     % Mutate the population
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%-----Para 5% de la población muta-----%%%%%
-       flagmutacion=0; % 1 -> muta 5%  
+        flagmutacion=0; % 1 -> muta 5%  
         if flagmutacion==1
             x=rand();
             if x<=mutrate
@@ -162,10 +163,11 @@ while iga<maxit
     end % end -> if finalizar interacciones       
     disp(iga)
 end %iga
-
+   
     PlotViajero(model,100,pop(1,:));
     pause(1/1e9)
     Estadisticas(); %Menú estadísticas
+    res_cost.Value = min(cost);
     disp(min(cost));
     
     function [mutante]=Mutar(mutnum,vanilla)
@@ -211,6 +213,7 @@ end %iga
         clf 
         rec=tabu;
         hold on
+        
         for i=1:1:(length(tabu))
             if i==length(tabu)
             b_x=model.x(rec(1));
@@ -262,7 +265,7 @@ end %iga
         hijo2=hijos{2};
         end % end -> function HacerHijos
 
-    function [model]=generamodelo_DNI(numberofnodes,tam,mode);
+    function [model]=generamodelo_DNI(numberofnodes,tam,mode)
             close all % Se cierran los mapas abiertos, el menu no
             %%%%%---------- Generacion inputs default ----------%%%%%
             if nargin<3
@@ -425,9 +428,17 @@ end %iga
         sec.FontSize = 18;
         sec.Text = 'Menú de estadísticas';
         inf = uilabel('Parent',p1,'Position',[30,90, 100,20]);
-        inf.Text = '---';
+        inf.Text = 'Mapa solución';
         ax = uiaxes('Parent',p1,'Position',[20,200, 640,460],...
                 'XLim',[0 tam],'YLim',[0 tam]);
+        inf = uilabel('Parent',p1,'Position',[180,90, 100,20]);
+        inf.Text = 'Genera gráficas min y mean';
+        inf = uilabel('Parent',p1,'Position',[430,90, 100,20]);
+        inf.Text = 'Coste mínimo';
+        res_cost = uieditfield(p1,'numeric','Position',[430,70,150,20],...
+                'Editable','off','ValueDisplayFormat','%.4f m');
+        res_cost.Value = 0;
+
         
         %%%%%---------- Elementos solicitud de variables ----------%%%%%
         %--- Info: Las variables solicitadas se guardan en el struct var.
@@ -449,6 +460,9 @@ end %iga
         function recorridoPush
             if recorrido.Value==1
                 cla(ax)
+                if ishandle(findobj('Type','Figure','Name','Recorrido'))
+                    close (figrec)
+                end
                 btnmin.Value=0;
                 ax.XLim=[0 tam];
                 ax.YLim=[0 tam];
@@ -467,6 +481,9 @@ end %iga
                     plot([a_x b_x],[a_y b_y],'b','LineWidth',1,'Parent',ax)
                 end    
                 plot(model.x,model.y,'o','Parent',ax)
+                legend('off')
+                xlabel('')
+                ylabel('')
                 hold off 
             else
                 cla(ax)
@@ -477,11 +494,17 @@ end %iga
              if btnmin.Value==1
                 recorrido.Value=0;
                 cla(ax)
+                if ishandle(findobj('Type','Figure','Name','Recorrido'))
+                    close (figrec)
+                end
                 ax.XLim=[0 iga];
                 ax.YLim=[(min(minc)-50) max(meanc)];
                 plot(minc,'Parent',ax);
                 hold on
                 plot(meanc,'Parent',ax);
+                xlabel('Número de interacciones')
+                ylabel('Distancia en metros')
+                legend('Coste mínimo','Media de costes')
                 hold off
              else
                 cla(ax) 
